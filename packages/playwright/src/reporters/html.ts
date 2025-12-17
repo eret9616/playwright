@@ -159,7 +159,7 @@ class HtmlReporter implements ReporterV2 {
       return;
     const { ok, singleTestId } = this._buildResult;
     const isCodingAgent = !!process.env.CLAUDECODE || !!process.env.COPILOT_CLI;
-    const shouldOpen = !isCodingAgent && !!process.stdin.isTTY && (this._open === 'always' || (!ok && this._open === 'on-failure'));
+    const shouldOpen = !isCodingAgent && (this._open === 'always' || (!ok && this._open === 'on-failure'));
     if (shouldOpen) {
       await showHTMLReport(this._outputFolder, this._host, this._port, singleTestId);
     } else if (this._options._mode === 'test' && !!process.stdin.isTTY) {
