@@ -192,10 +192,10 @@ export const WorkbenchLoader: React.FunctionComponent<{
       setDragOver(true);
   }}>
     <div className='hbox header' {...(showFileUploadDropArea ? { inert: true } : {})}>
-      <div className='logo'>
+      {/* <div className='logo'>
         <img src='playwright-logo.svg' alt='Playwright logo' />
       </div>
-      <div className='product'>Playwright</div>
+      <div className='product'>Playwright</div> */}
       {model.title && <div className='title'>{model.title}</div>}
       <div className='spacer'></div>
       <DialogToolbarButton icon='settings-gear' title='Settings' dialogDataTestId='settings-toolbar-dialog'>
