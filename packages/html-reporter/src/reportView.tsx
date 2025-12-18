@@ -134,7 +134,7 @@ export const ReportView: React.FC<{
     if (reportTitle)
       document.title = reportTitle;
     else
-      document.title = 'Playwright Test Report';
+      document.title = 'Mi Web Test Helper Report';
   }, [reportTitle]);
 
   return <div className='htmlreport vbox px-4 pb-4'>

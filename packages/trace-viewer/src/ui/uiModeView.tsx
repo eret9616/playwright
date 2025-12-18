@@ -465,14 +465,14 @@ export const UIModeView: React.FC<{}> = ({
       </div>}
       sidebar={<div className='vbox ui-mode-sidebar'>
         <Toolbar noShadow={true} noMinHeight={true}>
-          <img src='playwright-logo.svg' alt='Playwright logo' />
-          <div className='section-title'>Playwright</div>
+          {/* <img src='playwright-logo.svg' alt='Playwright logo' />
+          <div className='section-title'>Playwright</div> */}
           <ToolbarButton icon='refresh' title='Reload' onClick={() => reloadTests()} disabled={isRunningTest || isLoading}></ToolbarButton>
           <div style={{ position: 'relative' }}>
             <ToolbarButton icon={'terminal'} title={'Toggle output — ' + (isMac ? '⌃`' : 'Ctrl + `')} toggled={isShowingOutput} onClick={() => { setIsShowingOutput(!isShowingOutput); }} />
             {outputContainsError && <div title='Output contains error' style={{ position: 'absolute', top: 2, right: 2, width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--vscode-notificationsErrorIcon-foreground)' }} />}
           </div>
-          {!hasBrowsers && <ToolbarButton icon='lightbulb-autofix' style={{ color: 'var(--vscode-list-warningForeground)' }} title='Playwright browsers are missing' onClick={openInstallDialog} />}
+          {/* {!hasBrowsers && <ToolbarButton icon='lightbulb-autofix' style={{ color: 'var(--vscode-list-warningForeground)' }} title='Playwright browsers are missing' onClick={openInstallDialog} />} */}
         </Toolbar>
         <FiltersView
           filterText={filterText}
