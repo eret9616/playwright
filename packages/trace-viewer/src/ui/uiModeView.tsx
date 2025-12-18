@@ -465,13 +465,13 @@ export const UIModeView: React.FC<{}> = ({
       </div>}
       sidebar={<div className='vbox ui-mode-sidebar'>
         <Toolbar noShadow={true} noMinHeight={true}>
-          <img src='playwright-logo.svg' alt='Playwright logo' />
-          <div className='section-title'>Playwright</div>
+          {/* <img src='playwright-logo.svg' alt='Playwright logo' />
+          <div className='section-title'>Playwright</div> */}
           <ToolbarButton icon='refresh' title='Reload' onClick={() => reloadTests()} disabled={isRunningTest || isLoading}></ToolbarButton>
           <div style={{ position: 'relative' }}>
             <ToolbarButton icon={'terminal'} title={'Toggle output — ' + (isMac ? '⌃`' : 'Ctrl + `')} toggled={isShowingOutput} errorBadge={outputContainsError ? 'Output contains error' : undefined} onClick={() => { setIsShowingOutput(!isShowingOutput); }} />
           </div>
-          {!hasBrowsers && <ToolbarButton icon='lightbulb-autofix' style={{ color: 'var(--vscode-list-warningForeground)' }} title='Playwright browsers are missing' onClick={openInstallDialog} />}
+          {/* {!hasBrowsers && <ToolbarButton icon='lightbulb-autofix' style={{ color: 'var(--vscode-list-warningForeground)' }} title='Playwright browsers are missing' onClick={openInstallDialog} />} */}
         </Toolbar>
         <FiltersView
           filterText={filterText}
