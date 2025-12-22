@@ -65,8 +65,8 @@ export const Recorder: React.FC = ({}) => {
       },
       pageNavigated: ({ url }) => {
         document.title = url
-          ? `Playwright Inspector - ${url}`
-          : `Playwright Inspector`;
+          ? `Mi Web Test Helper Inspector - ${url}`
+          : `Mi Web Test Helper Inspector`;
       },
       pauseStateChanged: ({ paused }) => setPaused(paused),
       callLogsUpdated: ({ callLogs }) => {
