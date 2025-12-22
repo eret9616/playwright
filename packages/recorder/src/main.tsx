@@ -33,8 +33,8 @@ export const Main: React.FC = ({}) => {
     };
     window.playwrightSetPageURL = url => {
       document.title = url
-        ? `Playwright Inspector - ${url}`
-        : `Playwright Inspector`;
+        ? `Mi Web Test Helper Inspector - ${url}`
+        : `Mi Web Test Helper Inspector`;
     };
     window.playwrightSetPaused = setPaused;
     window.playwrightUpdateLogs = callLogs => {
