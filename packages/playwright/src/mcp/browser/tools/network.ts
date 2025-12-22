@@ -35,15 +35,16 @@ const requests = defineTabTool({
 
   handle: async (tab, params, response) => {
     const requests = await tab.requests();
-    for (const request of requests) {
-      const rendered = await renderRequest(request, params.includeStatic);
+    const requestArray = Array.from(requests);
+    for (let i = 0; i < requestArray.length; i++) {
+      const rendered = await renderRequest(requestArray[i], params.includeStatic, i);
       if (rendered)
         response.addResult(rendered);
     }
   },
 });
 
-async function renderRequest(request: playwright.Request, includeStatic: boolean): Promise<string | undefined> {
+async function renderRequest(request: playwright.Request, includeStatic: boolean, reqid: number): Promise<string | undefined> {
   const response = (request as Request)._hasResponse ? await request.response() : undefined;
   const isStaticRequest = ['document', 'stylesheet', 'image', 'media', 'font', 'script', 'manifest'].includes(request.resourceType());
   const isSuccessfulRequest = !response || response.status() < 400;
@@ -52,12 +53,102 @@ async function renderRequest(request: playwright.Request, includeStatic: boolean
     return undefined;
 
   const result: string[] = [];
-  result.push(`[${request.method().toUpperCase()}] ${request.url()}`);
+  result.push(`[${reqid}] [${request.method().toUpperCase()}] ${request.url()}`);
   if (response)
     result.push(`=> [${response.status()}] ${response.statusText()}`);
   return result.join(' ');
 }
 
+// Maximum size for request/response body content
+const BODY_SIZE_LIMIT = 10000;
+
+function truncateText(text: string, limit: number): string {
+  if (text.length > limit) {
+    return text.substring(0, limit) + '... <truncated>';
+  }
+  return text;
+}
+
+const requestDetail = defineTabTool({
+  capability: 'core',
+
+  schema: {
+    name: 'browser_network_request_detail',
+    title: 'Get network request detail',
+    description: 'Get detailed information about a specific network request including headers, body, and response',
+    inputSchema: z.object({
+      reqid: z.number().describe('The request ID from browser_network_requests output (the number in brackets at the start of each line)'),
+    }),
+    type: 'readOnly',
+  },
+
+  handle: async (tab, params, response) => {
+    const requests = await tab.requests();
+    const requestArray = Array.from(requests);
+    const request = requestArray[params.reqid];
+
+    if (!request) {
+      response.addResult(`Error: Request with id ${params.reqid} not found`);
+      return;
+    }
+
+    const result: string[] = [];
+
+    // Basic info
+    result.push('## Request');
+    result.push(`URL: ${request.url()}`);
+    result.push(`Method: ${request.method()}`);
+    result.push(`Resource Type: ${request.resourceType()}`);
+
+    // Request headers
+    result.push('\n### Request Headers');
+    const reqHeaders = request.headers();
+    for (const [name, value] of Object.entries(reqHeaders)) {
+      result.push(`- ${name}: ${value}`);
+    }
+
+    // Request body (POST data)
+    const postData = request.postData();
+    if (postData) {
+      result.push('\n### Request Body');
+      result.push(truncateText(postData, BODY_SIZE_LIMIT));
+    }
+
+    // Response info
+    const httpResponse = (request as Request)._hasResponse ? await request.response() : undefined;
+    if (httpResponse) {
+      result.push('\n## Response');
+      result.push(`Status: ${httpResponse.status()} ${httpResponse.statusText()}`);
+
+      // Response headers
+      result.push('\n### Response Headers');
+      const resHeaders = httpResponse.headers();
+      for (const [name, value] of Object.entries(resHeaders)) {
+        result.push(`- ${name}: ${value}`);
+      }
+
+      // Response body
+      result.push('\n### Response Body');
+      try {
+        const body = await httpResponse.text();
+        if (body.length === 0) {
+          result.push('<empty response>');
+        } else {
+          result.push(truncateText(body, BODY_SIZE_LIMIT));
+        }
+      } catch {
+        result.push('<not available>');
+      }
+    } else {
+      result.push('\n## Response');
+      result.push('No response available (request may be pending or failed)');
+    }
+
+    response.addResult(result.join('\n'));
+  },
+});
+
 export default [
   requests,
+  requestDetail,
 ];
