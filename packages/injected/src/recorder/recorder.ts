@@ -1227,6 +1227,13 @@ class Overlay {
       addEventListener(this._dragHandle, 'mousedown', event => {
         this._dragState = { offsetX: this._offsetX, dragStart: { x: (event as MouseEvent).clientX, y: 0 } };
       }),
+      addEventListener(this._dragHandle, 'touchstart', event => {
+        const touch = (event as TouchEvent).touches[0];
+        if (touch) {
+          this._dragState = { offsetX: this._offsetX, dragStart: { x: touch.clientX, y: 0 } };
+          event.preventDefault();
+        }
+      }),
       addEventListener(this._recordToggle, 'click', () => {
         if (this._recordToggle.classList.contains('disabled'))
           return;
@@ -1365,6 +1372,33 @@ class Overlay {
   onDblClick(event: MouseEvent) {
     return false;
   }
+
+  onTouchMove(event: TouchEvent) {
+    const touch = event.touches[0];
+    if (!touch) {
+      this._dragState = undefined;
+      return false;
+    }
+    if (this._dragState) {
+      this._offsetX = this._dragState.offsetX + touch.clientX - this._dragState.dragStart.x;
+      const halfGapSize = (this._recorder.injectedScript.window.innerWidth - this._measure.width) / 2 - 10;
+      this._offsetX = Math.max(-halfGapSize, Math.min(halfGapSize, this._offsetX));
+      this._updateVisualPosition();
+      this._recorder.setOverlayState({ offsetX: this._offsetX });
+      consumeEvent(event);
+      return true;
+    }
+    return false;
+  }
+
+  onTouchEnd(event: TouchEvent) {
+    if (this._dragState) {
+      this._dragState = undefined;
+      consumeEvent(event);
+      return true;
+    }
+    return false;
+  }
 }
 
 export class Recorder {
@@ -1440,6 +1474,8 @@ export class Recorder {
       addEventListener(this.document, 'mouseenter', event => this._onMouseEnter(event as MouseEvent), true),
       addEventListener(this.document, 'focus', event => this._onFocus(event), true),
       addEventListener(this.document, 'scroll', event => this._onScroll(event), true),
+      addEventListener(this.document, 'touchmove', event => this._onTouchMove(event as TouchEvent), true),
+      addEventListener(this.document, 'touchend', event => this._onTouchEnd(event as TouchEvent), true),
     ];
 
     this.highlight.install();
@@ -1634,6 +1670,20 @@ export class Recorder {
     this._lastHighlightedAriaTemplateJSON = 'undefined';
     this.highlight.hideActionPoint();
     this._currentTool.onScroll?.(event);
+  }
+
+  private _onTouchMove(event: TouchEvent) {
+    if (!event.isTrusted)
+      return;
+    if (this.overlay?.onTouchMove(event))
+      return;
+  }
+
+  private _onTouchEnd(event: TouchEvent) {
+    if (!event.isTrusted)
+      return;
+    if (this.overlay?.onTouchEnd(event))
+      return;
   }
 
   private _onInput(event: Event) {
