@@ -1183,37 +1183,37 @@ class Overlay {
     toolsListElement.appendChild(this._dragHandle);
 
     this._recordToggle = this._recorder.document.createElement('x-pw-tool-item');
-    this._recordToggle.title = 'Record';
+    this._recordToggle.title = '录制';
     this._recordToggle.classList.add('record');
     this._recordToggle.appendChild(this._recorder.document.createElement('x-div'));
     toolsListElement.appendChild(this._recordToggle);
 
     this._pickLocatorToggle = this._recorder.document.createElement('x-pw-tool-item');
-    this._pickLocatorToggle.title = 'Pick locator';
+    this._pickLocatorToggle.title = '选择定位器';
     this._pickLocatorToggle.classList.add('pick-locator');
     this._pickLocatorToggle.appendChild(this._recorder.document.createElement('x-div'));
     toolsListElement.appendChild(this._pickLocatorToggle);
 
     this._assertVisibilityToggle = this._recorder.document.createElement('x-pw-tool-item');
-    this._assertVisibilityToggle.title = 'Assert visibility';
+    this._assertVisibilityToggle.title = '断言可见性';
     this._assertVisibilityToggle.classList.add('visibility');
     this._assertVisibilityToggle.appendChild(this._recorder.document.createElement('x-div'));
     toolsListElement.appendChild(this._assertVisibilityToggle);
 
     this._assertTextToggle = this._recorder.document.createElement('x-pw-tool-item');
-    this._assertTextToggle.title = 'Assert text';
+    this._assertTextToggle.title = '断言文本';
     this._assertTextToggle.classList.add('text');
     this._assertTextToggle.appendChild(this._recorder.document.createElement('x-div'));
     toolsListElement.appendChild(this._assertTextToggle);
 
     this._assertValuesToggle = this._recorder.document.createElement('x-pw-tool-item');
-    this._assertValuesToggle.title = 'Assert value';
+    this._assertValuesToggle.title = '断言值';
     this._assertValuesToggle.classList.add('value');
     this._assertValuesToggle.appendChild(this._recorder.document.createElement('x-div'));
     toolsListElement.appendChild(this._assertValuesToggle);
 
     this._assertSnapshotToggle = this._recorder.document.createElement('x-pw-tool-item');
-    this._assertSnapshotToggle.title = 'Assert snapshot';
+    this._assertSnapshotToggle.title = '断言快照';
     this._assertSnapshotToggle.classList.add('snapshot');
     this._assertSnapshotToggle.appendChild(this._recorder.document.createElement('x-div'));
     toolsListElement.appendChild(this._assertSnapshotToggle);
@@ -1288,7 +1288,7 @@ class Overlay {
   setUIState(state: UIState) {
     const isRecording = state.mode === 'recording' || state.mode === 'assertingText' || state.mode === 'assertingVisibility' || state.mode === 'assertingValue' || state.mode === 'assertingSnapshot' || state.mode === 'recording-inspecting';
     this._recordToggle.classList.toggle('toggled', isRecording);
-    this._recordToggle.title = isRecording ? 'Stop Recording' : 'Start Recording';
+    this._recordToggle.title = isRecording ? '停止录制' : '开始录制';
     this._pickLocatorToggle.classList.toggle('toggled', state.mode === 'inspecting' || state.mode === 'recording-inspecting');
     this._assertVisibilityToggle.classList.toggle('toggled', state.mode === 'assertingVisibility');
     this._assertVisibilityToggle.classList.toggle('disabled', state.mode === 'none' || state.mode === 'standby' || state.mode === 'inspecting');
