@@ -740,6 +740,8 @@ class RecordActionTool implements RecorderTool {
 
 class JsonRecordActionTool implements RecorderTool {
   private _recorder: Recorder;
+  private _isComposing: boolean = false;
+  private _pendingFillAction: { element: HTMLElement, action: actions.Action } | null = null;
 
   constructor(recorder: Recorder) {
     this._recorder = recorder;
@@ -748,6 +750,18 @@ class JsonRecordActionTool implements RecorderTool {
   install() {
     // No highlight for the lightweight recorder.
     this._recorder.highlight.uninstall();
+    // Listen for IME composition events to handle Chinese input
+    this._recorder.document.addEventListener('compositionstart', () => {
+      this._isComposing = true;
+    }, true);
+    this._recorder.document.addEventListener('compositionend', () => {
+      this._isComposing = false;
+      // Commit pending fill action after composition ends
+      if (this._pendingFillAction) {
+        this._recorder.recordAction(this._pendingFillAction.action);
+        this._pendingFillAction = null;
+      }
+    }, true);
   }
 
   uninstall() {
@@ -831,14 +845,20 @@ class JsonRecordActionTool implements RecorderTool {
         return;
       }
 
-      this._recorder.recordAction({
+      const fillAction = {
         name: 'fill',
         ref,
         selector,
         ariaSnapshot,
         signals: [],
         text: element.isContentEditable ? element.innerText : (element as HTMLInputElement).value,
-      });
+      };
+      // Handle IME composition: defer action until composition ends
+      if (this._isComposing) {
+        this._pendingFillAction = { element, action: fillAction };
+      } else {
+        this._recorder.recordAction(fillAction);
+      }
       return;
     }
 
