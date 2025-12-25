@@ -827,7 +827,8 @@ class JsonRecordActionTool implements RecorderTool {
   onInput(event: Event) {
     const element = this._recorder.deepEventTarget(event);
 
-    const { ariaSnapshot, selector, ref } = this._ariaSnapshot(element);
+    // For fill operations, use noText: true to avoid text-based selectors with IME input
+    const { ariaSnapshot, selector, ref } = this._ariaSnapshot(element, { noText: true });
     if (isRangeInput(element)) {
       void this._recorder.recordAction({
         name: 'fill',
@@ -960,11 +961,11 @@ class JsonRecordActionTool implements RecorderTool {
     return false;
   }
 
-  private _ariaSnapshot(element: HTMLElement): { ariaSnapshot: string, selector: string, ref?: string };
-  private _ariaSnapshot(element: HTMLElement | undefined): { ariaSnapshot: string, selector?: string, ref?: string } {
+  private _ariaSnapshot(element: HTMLElement, options?: { noText?: boolean }): { ariaSnapshot: string, selector: string, ref?: string };
+  private _ariaSnapshot(element: HTMLElement | undefined, options?: { noText?: boolean }): { ariaSnapshot: string, selector?: string, ref?: string } {
     const { ariaSnapshot, refs } = this._recorder.injectedScript.ariaSnapshotForRecorder();
     const ref = element ? refs.get(element) : undefined;
-    const elementInfo = element ? this._recorder.injectedScript.generateSelector(element, { testIdAttributeName: this._recorder.state.testIdAttributeName }) : undefined;
+    const elementInfo = element ? this._recorder.injectedScript.generateSelector(element, { testIdAttributeName: this._recorder.state.testIdAttributeName, noText: options?.noText }) : undefined;
     return { ariaSnapshot, selector: elementInfo?.selector, ref };
   }
 }
