@@ -22888,6 +22888,12 @@ type Devices = {
   "Pixel 7 landscape": DeviceDescriptor;
   "Moto G4": DeviceDescriptor;
   "Moto G4 landscape": DeviceDescriptor;
+  "Xiaomi 14": DeviceDescriptor;
+  "Xiaomi 14 landscape": DeviceDescriptor;
+  "Xiaomi 13": DeviceDescriptor;
+  "Xiaomi 13 landscape": DeviceDescriptor;
+  "Redmi Note 13 Pro": DeviceDescriptor;
+  "Redmi Note 13 Pro landscape": DeviceDescriptor;
   "Desktop Chrome HiDPI": DeviceDescriptor;
   "Desktop Edge HiDPI": DeviceDescriptor;
   "Desktop Firefox HiDPI": DeviceDescriptor;

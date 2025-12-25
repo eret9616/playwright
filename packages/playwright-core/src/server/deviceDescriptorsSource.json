@@ -1671,6 +1671,96 @@
     "hasTouch": true,
     "defaultBrowserType": "chromium"
   },
+  "Xiaomi 14": {
+    "userAgent": "Mozilla/5.0 (Linux; Android 14; 23127PN0CC Build/UKQ1.230804.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.25 Mobile Safari/537.36",
+    "screen": {
+      "width": 393,
+      "height": 873
+    },
+    "viewport": {
+      "width": 393,
+      "height": 873
+    },
+    "deviceScaleFactor": 3,
+    "isMobile": true,
+    "hasTouch": true,
+    "defaultBrowserType": "chromium"
+  },
+  "Xiaomi 14 landscape": {
+    "userAgent": "Mozilla/5.0 (Linux; Android 14; 23127PN0CC Build/UKQ1.230804.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.25 Mobile Safari/537.36",
+    "screen": {
+      "width": 873,
+      "height": 393
+    },
+    "viewport": {
+      "width": 873,
+      "height": 393
+    },
+    "deviceScaleFactor": 3,
+    "isMobile": true,
+    "hasTouch": true,
+    "defaultBrowserType": "chromium"
+  },
+  "Xiaomi 13": {
+    "userAgent": "Mozilla/5.0 (Linux; Android 13; 2211133C Build/TKQ1.220905.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.25 Mobile Safari/537.36",
+    "screen": {
+      "width": 393,
+      "height": 851
+    },
+    "viewport": {
+      "width": 393,
+      "height": 851
+    },
+    "deviceScaleFactor": 3,
+    "isMobile": true,
+    "hasTouch": true,
+    "defaultBrowserType": "chromium"
+  },
+  "Xiaomi 13 landscape": {
+    "userAgent": "Mozilla/5.0 (Linux; Android 13; 2211133C Build/TKQ1.220905.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.25 Mobile Safari/537.36",
+    "screen": {
+      "width": 851,
+      "height": 393
+    },
+    "viewport": {
+      "width": 851,
+      "height": 393
+    },
+    "deviceScaleFactor": 3,
+    "isMobile": true,
+    "hasTouch": true,
+    "defaultBrowserType": "chromium"
+  },
+  "Redmi Note 13 Pro": {
+    "userAgent": "Mozilla/5.0 (Linux; Android 14; 23090RA98C Build/UKQ1.230917.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.25 Mobile Safari/537.36",
+    "screen": {
+      "width": 393,
+      "height": 873
+    },
+    "viewport": {
+      "width": 393,
+      "height": 873
+    },
+    "deviceScaleFactor": 2.75,
+    "isMobile": true,
+    "hasTouch": true,
+    "defaultBrowserType": "chromium"
+  },
+  "Redmi Note 13 Pro landscape": {
+    "userAgent": "Mozilla/5.0 (Linux; Android 14; 23090RA98C Build/UKQ1.230917.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.25 Mobile Safari/537.36",
+    "screen": {
+      "width": 873,
+      "height": 393
+    },
+    "viewport": {
+      "width": 873,
+      "height": 393
+    },
+    "deviceScaleFactor": 2.75,
+    "isMobile": true,
+    "hasTouch": true,
+    "defaultBrowserType": "chromium"
+  },
   "Desktop Chrome HiDPI": {
     "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.25 Safari/537.36",
     "screen": {
