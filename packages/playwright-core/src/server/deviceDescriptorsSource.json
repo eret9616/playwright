@@ -1671,6 +1671,36 @@
     "hasTouch": true,
     "defaultBrowserType": "chromium"
   },
+  "Xiaomi 13": {
+    "userAgent": "Mozilla/5.0 (Linux; Android 13; 2211133C Build/TKQ1.220905.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.25 Mobile Safari/537.36",
+    "screen": {
+      "width": 393,
+      "height": 851
+    },
+    "viewport": {
+      "width": 393,
+      "height": 851
+    },
+    "deviceScaleFactor": 3,
+    "isMobile": true,
+    "hasTouch": true,
+    "defaultBrowserType": "chromium"
+  },
+  "Xiaomi 13 landscape": {
+    "userAgent": "Mozilla/5.0 (Linux; Android 13; 2211133C Build/TKQ1.220905.001) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.25 Mobile Safari/537.36",
+    "screen": {
+      "width": 851,
+      "height": 393
+    },
+    "viewport": {
+      "width": 851,
+      "height": 393
+    },
+    "deviceScaleFactor": 3,
+    "isMobile": true,
+    "hasTouch": true,
+    "defaultBrowserType": "chromium"
+  },
   "Desktop Chrome HiDPI": {
     "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.7827.3 Safari/537.36",
     "screen": {
