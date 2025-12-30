@@ -276,3 +276,179 @@ export class Highlight {
     this._glassPaneElement.removeEventListener('click', handler);
   }
 }
+
+export class AgentMask {
+  private _injectedScript: InjectedScript;
+  private _maskElement: HTMLElement | null = null;
+  private _isActive: boolean = false;
+  private _hasBeenClosed: boolean = false;
+
+  constructor(injectedScript: InjectedScript) {
+    this._injectedScript = injectedScript;
+  }
+
+  show() {
+    // Only show mask if localStorage has _a=1
+    try {
+      if (this._injectedScript.window.sessionStorage.getItem('_pw_agent_mask') === '1')
+        return;
+      this._injectedScript.window.sessionStorage.setItem('_pw_agent_mask', '1');
+    } catch {
+      // localStorage may not be accessible (e.g., in some iframe contexts)
+      return;
+    }
+    // Once the mask has been closed, it should never show again
+    if (this._hasBeenClosed)
+      return;
+    if (this._isActive)
+      return;
+    this._isActive = true;
+    this._createMaskElement();
+    if (this._maskElement) {
+      this._injectedScript.document.documentElement?.appendChild(this._maskElement);
+      // Trigger reflow to enable transition
+      void this._maskElement.offsetHeight;
+      this._maskElement.classList.add('active');
+    }
+  }
+
+  hide(callback?: () => void) {
+    if (!this._isActive || !this._maskElement) {
+      callback?.();
+      return;
+    }
+    this._isActive = false;
+    this._hasBeenClosed = true;
+    this._maskElement.remove();
+    this._maskElement = null;
+    callback?.();
+  }
+
+  isActive(): boolean {
+    return this._isActive;
+  }
+
+  private _createMaskElement() {
+    const document = this._injectedScript.document;
+    this._maskElement = document.createElement('x-pw-agent-mask');
+
+    // Inject styles
+    this._injectMaskStyles();
+
+    // Prevent all events from bubbling up to the page
+    this._maskElement.addEventListener('click', e => e.stopPropagation(), true);
+    this._maskElement.addEventListener('mousedown', e => e.stopPropagation(), true);
+    this._maskElement.addEventListener('mouseup', e => e.stopPropagation(), true);
+    this._maskElement.addEventListener('pointerdown', e => e.stopPropagation(), true);
+    this._maskElement.addEventListener('pointerup', e => e.stopPropagation(), true);
+    this._maskElement.addEventListener('keydown', e => e.stopPropagation(), true);
+    this._maskElement.addEventListener('keyup', e => e.stopPropagation(), true);
+    this._maskElement.addEventListener('input', e => e.stopPropagation(), true);
+
+    // Vignette mask layer (四周暗角)
+    const vignetteMask = document.createElement('div');
+    vignetteMask.className = 'vignette-mask';
+    this._maskElement.appendChild(vignetteMask);
+
+    // Color overlay layer
+    const colorOverlay = document.createElement('div');
+    colorOverlay.className = 'color-overlay';
+    this._maskElement.appendChild(colorOverlay);
+
+    // Glow border layer
+    const glowBorder = document.createElement('div');
+    glowBorder.className = 'glow-border';
+    this._maskElement.appendChild(glowBorder);
+
+    // Control bar with simple message
+    const controlBar = document.createElement('div');
+    controlBar.className = 'agent-control-bar';
+    controlBar.textContent = '加载中，请勿操作浏览器';
+    this._maskElement.appendChild(controlBar);
+  }
+
+  private _injectMaskStyles() {
+    const styleId = 'x-pw-agent-mask-styles';
+    if (this._injectedScript.document.getElementById(styleId))
+      return;
+
+    const style = this._injectedScript.document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      x-pw-agent-mask {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: auto;
+        z-index: 2147483646;
+        opacity: 0;
+        transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      x-pw-agent-mask.active {
+        opacity: 1;
+      }
+
+      x-pw-agent-mask.fade-out {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      x-pw-agent-mask .vignette-mask {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(
+          ellipse 80% 70% at 50% 50%,
+          transparent 0%,
+          transparent 40%,
+          rgba(0, 0, 0, 0.15) 70%,
+          rgba(0, 0, 0, 0.4) 100%
+        );
+        pointer-events: none;
+      }
+
+      x-pw-agent-mask .color-overlay {
+        display: none;
+      }
+
+      x-pw-agent-mask .glow-border {
+        display: none;
+      }
+
+      x-pw-agent-mask .agent-control-bar {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.9);
+        background: rgba(30, 30, 30, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 12px;
+        padding: 16px 32px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        opacity: 0;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.2s;
+        pointer-events: auto;
+        font-family: system-ui, "Ubuntu", "Droid Sans", sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        color: white;
+      }
+
+      x-pw-agent-mask.active .agent-control-bar {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      x-pw-agent-mask.fade-out .agent-control-bar {
+        display: none;
+      }
+    `;
+    this._injectedScript.document.head?.appendChild(style);
+  }
+}

@@ -15,6 +15,7 @@
  */
 
 import clipPaths from './clipPaths';
+import { AgentMask } from '../highlight';
 
 import type { Point } from '@isomorphic/types';
 import type { Highlight, HighlightEntry } from '../highlight';
@@ -39,6 +40,8 @@ export interface RecorderDelegate {
   setMode?(mode: Mode): Promise<void>;
   setOverlayState?(state: OverlayState): Promise<void>;
   highlightUpdated?(): void;
+  onAgentMaskTakeControl?(): void;
+  onAgentMaskStop?(): void;
 }
 
 interface RecorderTool {
@@ -1342,6 +1345,8 @@ class Overlay {
 
   private _hideOverlay() {
     this._overlayElement.setAttribute('hidden', 'true');
+    // Hide agent mask when overlay is hidden
+    this._recorder.hideAgentMask();
   }
 
   private _showOverlay() {
@@ -1349,6 +1354,8 @@ class Overlay {
       return;
     this._overlayElement.removeAttribute('hidden');
     this._updateVisualPosition();
+    // Show agent mask when overlay is shown
+    this._recorder.showAgentMask();
   }
 
   private _updateVisualPosition() {
@@ -1432,6 +1439,7 @@ export class Recorder {
   private _lastActionAutoexpectSnapshot: AriaSnapshot | undefined;
   readonly highlight: Highlight;
   readonly overlay: Overlay | undefined;
+  private _agentMask: AgentMask | undefined;
   private _stylesheet: CSSStyleSheet;
   state: UIState = {
     mode: 'none',
@@ -1462,6 +1470,7 @@ export class Recorder {
     if (injectedScript.window.top === injectedScript.window) {
       this.overlay = new Overlay(this);
       this.overlay.setUIState(this.state);
+      this._agentMask = new AgentMask(injectedScript);
     }
     this._stylesheet = new injectedScript.window.CSSStyleSheet();
     this._stylesheet.replaceSync(`
@@ -1795,6 +1804,14 @@ export class Recorder {
   elementPicked(selector: string, model: HighlightModel) {
     const ariaSnapshot = this.injectedScript.ariaSnapshot(model.elements[0], { mode: 'expect' });
     void this._delegate.elementPicked?.({ selector, ariaSnapshot });
+  }
+
+  showAgentMask() {
+    this._agentMask?.show();
+  }
+
+  hideAgentMask(callback?: () => void) {
+    this._agentMask?.hide(callback);
   }
 }
 

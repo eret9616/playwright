@@ -293,6 +293,55 @@ export class InputRecorder {
 
   private async _initialize() {
     const sessionLog = this._context.sessionLog!;
+    const browserContext = this._browserContext;
+    const maskAlreadyInactive = !sessionLog.isMaskActive();
+
+    // Helper function to remove agent mask from all pages
+    const removeAgentMaskFromAllPages = async () => {
+      for (const page of browserContext.pages()) {
+        try {
+          await page.evaluate(() => {
+            const maskElement = document.querySelector('x-pw-agent-mask');
+            if (maskElement)
+              maskElement.remove();
+          });
+        } catch {
+          // Page might be closed, ignore
+        }
+      }
+    };
+
+    if (!maskAlreadyInactive) {
+      // Set up flush callback to hide agent mask after session log is flushed
+      // This callback is called every time flush happens, to handle edge cases where mask reappears
+      sessionLog.setOnFlushCallback(async () => {
+        // Allow writing to session log when mask is closed (only set once)
+        if (sessionLog.isMaskActive())
+          sessionLog.setMaskActive(false);
+        // Notify all pages to hide the agent mask (always try to remove, in case it reappears)
+        await removeAgentMaskFromAllPages();
+      });
+    }
+
+    // When mask is already inactive, we need to remove it after any page navigation
+    // because the recorder will show the mask again on each page load
+    if (maskAlreadyInactive) {
+      browserContext.on('page', async page => {
+        // Wait for page to be ready, then remove the mask
+        page.on('load', async () => {
+          try {
+            await page.evaluate(() => {
+              const maskElement = document.querySelector('x-pw-agent-mask');
+              if (maskElement)
+                maskElement.remove();
+            });
+          } catch {
+            // Page might be closed, ignore
+          }
+        });
+      });
+    }
+
     await (this._browserContext as any)._enableRecorder({
       mode: 'recording',
       recorderMode: 'api',
@@ -326,5 +375,21 @@ export class InputRecorder {
           sessionLog.logUserAction(navigateAction, tab, `await page.goto('${data.signal.url}');`, false);
       },
     });
+
+    // If mask was already inactive before _enableRecorder, remove it now
+    // (after recorder has been initialized and potentially shown the mask)
+    if (maskAlreadyInactive) {
+      for (const page of browserContext.pages()) {
+        try {
+          await page.evaluate(() => {
+            const maskElement = document.querySelector('x-pw-agent-mask');
+            if (maskElement)
+              maskElement.remove();
+          });
+        } catch {
+          // Page might be closed, ignore
+        }
+      }
+    }
   }
 }

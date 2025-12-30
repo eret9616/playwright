@@ -46,10 +46,32 @@ export class SessionLog {
   private _pendingEntries: LogEntry[] = [];
   private _sessionFileQueue = Promise.resolve();
   private _flushEntriesTimeout: NodeJS.Timeout | undefined;
+  private _onFlushCallback: (() => void) | undefined;
+  private _isMaskActive: boolean = true;
 
   constructor(sessionFolder: string) {
     this._folder = sessionFolder;
     this._file = path.join(this._folder, 'session.md');
+  }
+
+  setOnFlushCallback(callback: () => void) {
+    this._onFlushCallback = callback;
+  }
+
+  setMaskActive(active: boolean) {
+    this._isMaskActive = active;
+    if (active) {
+      // When mask becomes active, clear any pending entries and cancel pending flush
+      if (this._flushEntriesTimeout) {
+        clearTimeout(this._flushEntriesTimeout);
+        this._flushEntriesTimeout = undefined;
+      }
+      this._pendingEntries = [];
+    }
+  }
+
+  isMaskActive(): boolean {
+    return this._isMaskActive;
   }
 
   static async create(config: FullConfig, clientInfo: mcpServer.ClientInfo): Promise<SessionLog> {
@@ -76,6 +98,10 @@ export class SessionLog {
   }
 
   logUserAction(action: actions.Action, tab: Tab, code: string, isUpdate: boolean) {
+    // Ignore user actions when mask is active
+    if (this._isMaskActive)
+      return;
+
     code = code.trim();
     if (isUpdate) {
       const lastEntry = this._pendingEntries[this._pendingEntries.length - 1];
@@ -116,7 +142,18 @@ export class SessionLog {
 
   private async _flushEntries() {
     clearTimeout(this._flushEntriesTimeout);
-    const entries = this._pendingEntries;
+
+    // When mask is active, only keep tool call entries (filter out user actions)
+    let entries = this._pendingEntries;
+    if (this._isMaskActive)
+      entries = entries.filter(e => e.toolCall);
+
+    // Skip if no entries to flush
+    if (entries.length === 0) {
+      this._pendingEntries = [];
+      return;
+    }
+
     this._pendingEntries = [];
     const lines: string[] = [''];
 
@@ -172,6 +209,11 @@ export class SessionLog {
       lines.push('', '');
     }
 
-    this._sessionFileQueue = this._sessionFileQueue.then(() => fs.promises.appendFile(this._file, lines.join('\n')));
+    this._sessionFileQueue = this._sessionFileQueue.then(async () => {
+      await fs.promises.appendFile(this._file, lines.join('\n'));
+      // Notify that flush is complete (every time, to handle edge cases where mask reappears)
+      if (this._onFlushCallback)
+        this._onFlushCallback();
+    });
   }
 }
