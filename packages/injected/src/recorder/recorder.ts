@@ -1184,7 +1184,6 @@ class Overlay {
   private _overlayElement: HTMLElement;
   private _dragHandle: HTMLElement;
   private _recordToggle: HTMLElement;
-  private _pickLocatorToggle: HTMLElement;
   private _assertVisibilityToggle: HTMLElement;
   private _assertTextToggle: HTMLElement;
   private _assertValuesToggle: HTMLElement;
@@ -1210,11 +1209,7 @@ class Overlay {
     this._recordToggle.appendChild(this._recorder.document.createElement('x-div'));
     toolsListElement.appendChild(this._recordToggle);
 
-    this._pickLocatorToggle = this._recorder.document.createElement('x-pw-tool-item');
-    this._pickLocatorToggle.title = '选择定位器';
-    this._pickLocatorToggle.classList.add('pick-locator');
-    this._pickLocatorToggle.appendChild(this._recorder.document.createElement('x-div'));
-    toolsListElement.appendChild(this._pickLocatorToggle);
+    // pick-locator 按钮已被移除
 
     this._assertVisibilityToggle = this._recorder.document.createElement('x-pw-tool-item');
     this._assertVisibilityToggle.title = '断言可见性';
@@ -1262,22 +1257,6 @@ class Overlay {
           return;
         this._recorder.setMode(this._recorder.state.mode === 'none' || this._recorder.state.mode === 'standby' || this._recorder.state.mode === 'inspecting' ? 'recording' : 'standby');
       }),
-      addEventListener(this._pickLocatorToggle, 'click', () => {
-        if (this._pickLocatorToggle.classList.contains('disabled'))
-          return;
-        const newMode: Record<Mode, Mode> = {
-          'inspecting': 'standby',
-          'none': 'inspecting',
-          'standby': 'inspecting',
-          'recording': 'recording-inspecting',
-          'recording-inspecting': 'recording',
-          'assertingText': 'recording-inspecting',
-          'assertingVisibility': 'recording-inspecting',
-          'assertingValue': 'recording-inspecting',
-          'assertingSnapshot': 'recording-inspecting',
-        };
-        this._recorder.setMode(newMode[this._recorder.state.mode]);
-      }),
       addEventListener(this._assertVisibilityToggle, 'click', () => {
         if (!this._assertVisibilityToggle.classList.contains('disabled'))
           this._recorder.setMode(this._recorder.state.mode === 'assertingVisibility' ? 'recording' : 'assertingVisibility');
@@ -1311,7 +1290,6 @@ class Overlay {
     const isRecording = state.mode === 'recording' || state.mode === 'assertingText' || state.mode === 'assertingVisibility' || state.mode === 'assertingValue' || state.mode === 'assertingSnapshot' || state.mode === 'recording-inspecting';
     this._recordToggle.classList.toggle('toggled', isRecording);
     this._recordToggle.title = isRecording ? '停止录制' : '开始录制';
-    this._pickLocatorToggle.classList.toggle('toggled', state.mode === 'inspecting' || state.mode === 'recording-inspecting');
     this._assertVisibilityToggle.classList.toggle('toggled', state.mode === 'assertingVisibility');
     this._assertVisibilityToggle.classList.toggle('disabled', state.mode === 'none' || state.mode === 'standby' || state.mode === 'inspecting');
     this._assertTextToggle.classList.toggle('toggled', state.mode === 'assertingText');
