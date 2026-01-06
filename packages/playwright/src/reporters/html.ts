@@ -220,7 +220,7 @@ export async function showHTMLReport(reportFolder: string | undefined, host: str
   await server.start({ port, host, preferredPort: port ? undefined : 9323 });
   let url = server.urlPrefix('human-readable');
   writeLine('');
-  writeLine(colors.cyan(`  Serving HTML report at ${url}. Press Ctrl+C to quit.`));
+  writeLine(colors.cyan(`  Serving HTML report at ${url}.`));
   if (testId)
     url += `#?testId=${testId}`;
   url = url.replace('0.0.0.0', 'localhost');
