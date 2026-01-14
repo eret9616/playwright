@@ -1155,7 +1155,7 @@ class TextAssertionTool implements RecorderTool {
     };
     textElement.addEventListener('input', updateAndValidate);
 
-    const label = 'Assert that element contains text';
+    const label = '断言该位置含有以下文本';
     const dialogElement = this._dialog.show({
       label,
       body: textElement,
