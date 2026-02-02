@@ -350,12 +350,18 @@ export class CRBrowserContext extends BrowserContext<CREventsMap> {
   override async _initialize() {
     assert(!Array.from(this._browser._crPages.values()).some(page => page._browserContext === this));
     const promises: Promise<any>[] = [super._initialize()];
+    // Skip Browser.setDownloadBehavior for Android Chrome (clank) and when acceptDownloads is set to internal-browser-default
     if (this._browser.options.name !== 'clank' && this._options.acceptDownloads !== 'internal-browser-default') {
       promises.push(this._browser._session.send('Browser.setDownloadBehavior', {
         behavior: this._options.acceptDownloads === 'accept' ? 'allowAndName' : 'deny',
         browserContextId: this._browserContextId,
         downloadPath: this._browser.options.downloadsPath,
         eventsEnabled: true,
+      }).catch(e => {
+        // Ignore errors for browsers that don't support this method (e.g., Android WebView)
+        // These browsers may not support browser context management
+        if (!e.message.includes('Browser context management is not supported'))
+          throw e;
       }));
     }
     await Promise.all(promises);
