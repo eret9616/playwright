@@ -76,7 +76,9 @@ export class BrowserBackend implements ServerBackend {
       for (const reason of context.drainPendingUnhandledRejections())
         response.addError(formatRejectionReason(reason));
       responseObject = await response.serialize();
-      this._sessionLog?.logResponse(name, parsedArguments, responseObject);
+      const skipSessionLog = (rawArguments?._meta as any)?._skipSessionLog;
+      if (!skipSessionLog)
+        this._sessionLog?.logResponse(name, parsedArguments, responseObject);
     } catch (error: any) {
       const messages = [String(error), ...context.drainPendingUnhandledRejections().map(formatRejectionReason)];
       responseObject = formatError(messages.join('\n\n'));
