@@ -66,7 +66,9 @@ export class BrowserServerBackend implements ServerBackend {
     try {
       await tool.handle(context, parsedArguments, response);
       await response.finish();
-      this._sessionLog?.logResponse(response);
+      const skipSessionLog = (rawArguments?._meta as any)?._skipSessionLog;
+      if (!skipSessionLog)
+        this._sessionLog?.logResponse(response);
     } catch (error: any) {
       response.addError(String(error));
     } finally {
