@@ -296,30 +296,17 @@ export class InputRecorder {
     const browserContext = this._browserContext;
     const maskAlreadyInactive = !sessionLog.isMaskActive();
 
-    // Helper function to remove agent mask from all pages
-    const removeAgentMaskFromAllPages = async () => {
-      for (const page of browserContext.pages()) {
-        try {
-          await page.evaluate(() => {
-            const maskElement = document.querySelector('x-pw-agent-mask');
-            if (maskElement)
-              maskElement.remove();
-          });
-        } catch {
-          // Page might be closed, ignore
-        }
-      }
-    };
-
     if (!maskAlreadyInactive) {
-      // Set up flush callback to hide agent mask after session log is flushed
-      // This callback is called every time flush happens, to handle edge cases where mask reappears
+      // Set up flush callback to allow writing user actions to session log after first flush
+      // But do NOT auto-remove the agent mask - it should stay until explicitly hidden
+      // (e.g., when attempt_completion is called)
       sessionLog.setOnFlushCallback(async () => {
         // Allow writing to session log when mask is closed (only set once)
         if (sessionLog.isMaskActive())
           sessionLog.setMaskActive(false);
-        // Notify all pages to hide the agent mask (always try to remove, in case it reappears)
-        await removeAgentMaskFromAllPages();
+        // NOTE: Do NOT remove the agent mask here.
+        // The mask should remain visible until the AI conversation is complete
+        // (i.e., when attempt_completion is called).
       });
     }
 
