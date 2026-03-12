@@ -829,6 +829,10 @@ class JsonRecordActionTool implements RecorderTool {
   onInput(event: Event) {
     const element = this._recorder.deepEventTarget(event);
 
+    // Skip file inputs - they are handled by the filechooser event in tab.ts
+    if (element.nodeName === 'INPUT' && (element as HTMLInputElement).type.toLowerCase() === 'file')
+      return;
+
     // For fill operations, use noText: true to avoid text-based selectors with IME input
     const { ariaSnapshot, selector, ref } = this._ariaSnapshot(element, { noText: true });
     if (isRangeInput(element)) {
