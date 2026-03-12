@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { exec } from 'child_process';
 import { EventEmitter } from 'events';
 import * as playwright from 'playwright-core';
 import { asLocator, ManualPromise } from 'playwright-core/lib/utils';
@@ -28,6 +29,7 @@ import { requireOrImport } from '../../transform/transform';
 import type { Context } from './context';
 import type { Page } from '../../../../playwright-core/src/client/page';
 import type { Locator } from '../../../../playwright-core/src/client/locator';
+import type * as actions from './actions';
 
 export const TabEvents = {
   modalState: 'modalState'
@@ -71,12 +73,18 @@ export class Tab extends EventEmitter<TabEventsInterface> {
     page.on('request', request => this._requests.add(request));
     page.on('close', () => this._onClose());
     page.on('filechooser', chooser => {
-      this.setModalState({
-        type: 'fileChooser',
-        description: 'File chooser',
-        fileChooser: chooser,
-        clearedBy: uploadFile.schema.name,
-      });
+      if (this.context.isRunningTool()) {
+        // AI tool triggered: use modal state for browser_file_upload tool
+        this.setModalState({
+          type: 'fileChooser',
+          description: 'File chooser',
+          fileChooser: chooser,
+          clearedBy: uploadFile.schema.name,
+        });
+      } else {
+        // User triggered: open native file dialog
+        void this._handleUserFileChooser(chooser);
+      }
     });
     page.on('dialog', dialog => this._dialogShown(dialog));
     page.on('download', download => {
@@ -150,6 +158,32 @@ export class Tab extends EventEmitter<TabEventsInterface> {
     this._downloads.push(entry);
     await download.saveAs(entry.outputFile);
     entry.finished = true;
+  }
+
+  private async _handleUserFileChooser(chooser: playwright.FileChooser) {
+    try {
+      const isMultiple = chooser.isMultiple();
+      const files = await openNativeFileDialog(isMultiple);
+      if (files.length > 0) {
+        await chooser.setFiles(files);
+        // Log to session
+        const sessionLog = this.context.sessionLog;
+        if (sessionLog) {
+          const action: actions.SetInputFilesAction = {
+            name: 'setInputFiles',
+            selector: '',
+            files,
+            signals: [],
+          };
+          const filesArg = JSON.stringify(files.length === 1 ? files[0] : files);
+          const code =
+            `await page.locator('input[type="file"]').setInputFiles(${filesArg});`;
+          sessionLog.logUserAction(action, this, code, false);
+        }
+      }
+    } catch (e) {
+      logUnhandledError(e);
+    }
   }
 
   private _clearCollectedArtifacts() {
@@ -391,6 +425,36 @@ function consoleLevelForMessageType(type: ConsoleMessageType): ConsoleMessageLev
     default:
       return 'info';
   }
+}
+
+function openNativeFileDialog(multiple: boolean): Promise<string[]> {
+  return new Promise(resolve => {
+    const platform = process.platform;
+    let command: string;
+
+    if (platform === 'darwin') {
+      command = multiple
+        ? `osascript -e 'set theFiles to choose file with multiple selections allowed' -e 'set output to ""' -e 'repeat with aFile in theFiles' -e 'set output to output & POSIX path of aFile & linefeed' -e 'end repeat' -e 'return output'`
+        : `osascript -e 'return POSIX path of (choose file)'`;
+    } else if (platform === 'win32') {
+      command = multiple
+        ? `powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.OpenFileDialog; $f.Multiselect = $true; if ($f.ShowDialog() -eq 'OK') { $f.FileNames -join [char]10 } else { '' }"`
+        : `powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.OpenFileDialog; if ($f.ShowDialog() -eq 'OK') { $f.FileName } else { '' }"`;
+    } else {
+      resolve([]);
+      return;
+    }
+
+    exec(command, (error, stdout) => {
+      if (error) {
+        // User cancelled or error occurred
+        resolve([]);
+        return;
+      }
+      const files = stdout.trim().split('\n').filter(f => f.length > 0);
+      resolve(files);
+    });
+  });
 }
 
 const tabSymbol = Symbol('tabSymbol');
