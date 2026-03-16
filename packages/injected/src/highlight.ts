@@ -288,13 +288,14 @@ export class AgentMask {
   }
 
   show() {
-    // Only show mask if localStorage has _a=1
+    // Don't re-show the mask if it was explicitly closed (e.g., streaming ended)
     try {
-      if (this._injectedScript.window.sessionStorage.getItem('_pw_agent_mask') === '1')
+      if (this._injectedScript.window.sessionStorage.getItem('_pw_agent_mask') === 'closed')
         return;
-      this._injectedScript.window.sessionStorage.setItem('_pw_agent_mask', '1');
+      // Mark as active so it persists across same-origin navigations
+      this._injectedScript.window.sessionStorage.setItem('_pw_agent_mask', 'active');
     } catch {
-      // localStorage may not be accessible (e.g., in some iframe contexts)
+      // sessionStorage may not be accessible (e.g., in some iframe contexts)
       return;
     }
     // Once the mask has been closed, it should never show again
@@ -319,6 +320,12 @@ export class AgentMask {
     }
     this._isActive = false;
     this._hasBeenClosed = true;
+    // Mark as closed in sessionStorage so same-origin navigations won't re-show
+    try {
+      this._injectedScript.window.sessionStorage.setItem('_pw_agent_mask', 'closed');
+    } catch {
+      // Ignore storage errors
+    }
     this._maskElement.remove();
     this._maskElement = null;
     callback?.();
