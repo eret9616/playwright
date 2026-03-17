@@ -1741,7 +1741,8 @@ export class Recorder {
   private _ignoreOverlayEvent(event: Event) {
     return event.composedPath().some(e => {
       const nodeName = (e as Element).nodeName || '';
-      return nodeName.toLowerCase() === 'x-pw-glass';
+      const lower = nodeName.toLowerCase();
+      return lower === 'x-pw-glass' || lower === 'x-pw-agent-mask';
     });
   }
 
