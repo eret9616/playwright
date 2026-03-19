@@ -140,6 +140,13 @@ export class JavaLanguageGenerator implements LanguageGenerator {
       }
       case 'assertSnapshot':
         return `assertThat(${subject}.${this._asLocator(action.selector, inFrameLocator)}).matchesAriaSnapshot(${quote(action.ariaSnapshot)});`;
+      case 'drag': {
+        if (action.targetSelector)
+          return `${subject}.${this._asLocator(action.selector, inFrameLocator)}.dragTo(${subject}.${this._asLocator(action.targetSelector, inFrameLocator)});`;
+        if (action.startPosition && action.endPosition)
+          return `${subject}.mouse().move(${action.startPosition.x}, ${action.startPosition.y});\n${subject}.mouse().down();\n${subject}.mouse().move(${action.endPosition.x}, ${action.endPosition.y});\n${subject}.mouse().up();`;
+        return `// drag action missing target`;
+      }
     }
   }
 
