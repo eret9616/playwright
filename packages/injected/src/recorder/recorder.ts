@@ -15,7 +15,6 @@
  */
 
 import clipPaths from './clipPaths';
-import { AgentMask } from '../highlight';
 
 import type { Point } from '@isomorphic/types';
 import type { Highlight, HighlightEntry } from '../highlight';
@@ -40,8 +39,6 @@ export interface RecorderDelegate {
   setMode?(mode: Mode): Promise<void>;
   setOverlayState?(state: OverlayState): Promise<void>;
   highlightUpdated?(): void;
-  onAgentMaskTakeControl?(): void;
-  onAgentMaskStop?(): void;
 }
 
 interface RecorderTool {
@@ -52,6 +49,7 @@ interface RecorderTool {
   onDblClick?(event: MouseEvent): void;
   onContextMenu?(event: MouseEvent): void;
   onDragStart?(event: DragEvent): void;
+  onDrop?(event: DragEvent): void;
   onInput?(event: Event): void;
   onKeyDown?(event: KeyboardEvent): void;
   onKeyUp?(event: KeyboardEvent): void;
@@ -198,6 +196,9 @@ class RecordActionTool implements RecorderTool {
   private _pendingClickAction: { action: actions.ClickAction, timeout: number } | undefined;
   private _observer: MutationObserver | null = null;
   private _dialog: Dialog;
+  private _dragStartModel: HighlightModelWithSelector | null = null;
+  private _mouseDownPosition: { x: number, y: number } | null = null;
+  private _isDragging: boolean = false;
 
   constructor(recorder: Recorder) {
     this._recorder = recorder;
@@ -244,6 +245,12 @@ class RecordActionTool implements RecorderTool {
         // auxclick event arrives after contextmenu and should be consumed.
         consumeEvent(event);
       }
+      return;
+    }
+
+    // Suppress click after a drag gesture.
+    if (this._isDragging) {
+      this._isDragging = false;
       return;
     }
 
@@ -363,6 +370,30 @@ class RecordActionTool implements RecorderTool {
     this._consumeWhenAboutToPerform(event);
   }
 
+  onDragStart(event: DragEvent) {
+    if (this._dialog.isShowing())
+      return;
+    this._dragStartModel = this._hoveredModel;
+  }
+
+  onDrop(event: DragEvent) {
+    if (this._dialog.isShowing())
+      return;
+    if (!this._dragStartModel)
+      return;
+    const target = this._recorder.deepEventTarget(event);
+    const model = this._recorder.injectedScript.generateSelector(target, { testIdAttributeName: this._recorder.state.testIdAttributeName });
+    if (model) {
+      this._recordAction({
+        name: 'drag',
+        selector: this._dragStartModel.selector,
+        targetSelector: model.selector,
+        signals: [],
+      });
+    }
+    this._dragStartModel = null;
+  }
+
   onMouseDown(event: MouseEvent) {
     if (this._dialog.isShowing())
       return;
@@ -370,6 +401,8 @@ class RecordActionTool implements RecorderTool {
       return;
     this._consumeWhenAboutToPerform(event);
     this._activeModel = this._hoveredModel;
+    this._mouseDownPosition = { x: event.clientX, y: event.clientY };
+    this._isDragging = false;
   }
 
   onMouseUp(event: MouseEvent) {
@@ -378,11 +411,49 @@ class RecordActionTool implements RecorderTool {
     if (this._shouldIgnoreMouseEvent(event))
       return;
     this._consumeWhenAboutToPerform(event);
+
+    if (this._isDragging && this._mouseDownPosition) {
+      this._cancelPendingClickAction();
+      const startPosition = this._mouseDownPosition;
+      const endPosition = { x: event.clientX, y: event.clientY };
+      const sourceSelector = this._activeModel?.selector;
+      const targetSelector = this._hoveredModel?.selector;
+
+      if (sourceSelector && targetSelector && sourceSelector !== targetSelector) {
+        this._recordAction({
+          name: 'drag',
+          selector: sourceSelector,
+          targetSelector,
+          startPosition,
+          endPosition,
+          signals: [],
+        });
+      } else if (sourceSelector) {
+        this._recordAction({
+          name: 'drag',
+          selector: sourceSelector,
+          startPosition,
+          endPosition,
+          signals: [],
+        });
+      }
+    }
+
+    this._mouseDownPosition = null;
+    // Don't reset _isDragging here - let onClick reset it to suppress the trailing click event.
   }
 
   onMouseMove(event: MouseEvent) {
     if (this._dialog.isShowing())
       return;
+
+    if (this._mouseDownPosition && !this._isDragging) {
+      const dx = event.clientX - this._mouseDownPosition.x;
+      const dy = event.clientY - this._mouseDownPosition.y;
+      if (Math.sqrt(dx * dx + dy * dy) > 10)
+        this._isDragging = true;
+    }
+
     const target = this._recorder.deepEventTarget(event);
     if (this._hoveredElement === target)
       return;
@@ -745,6 +816,10 @@ class JsonRecordActionTool implements RecorderTool {
   private _recorder: Recorder;
   private _isComposing: boolean = false;
   private _pendingFillAction: { element: HTMLElement, action: actions.Action } | null = null;
+  private _dragStartElement: HTMLElement | null = null;
+  private _mouseDownPosition: { x: number, y: number } | null = null;
+  private _mouseDownElement: HTMLElement | null = null;
+  private _isDragging: boolean = false;
 
   constructor(recorder: Recorder) {
     this._recorder = recorder;
@@ -772,6 +847,12 @@ class JsonRecordActionTool implements RecorderTool {
   }
 
   onClick(event: MouseEvent) {
+    // Suppress click after a drag gesture.
+    if (this._isDragging) {
+      this._isDragging = false;
+      return;
+    }
+
     // in webkit, sliding a range element may trigger a click event with a different target if the mouse is released outside the element bounding box.
     // So we check the hovered element instead, and if it is a range input, we skip click handling
     const element = this._recorder.deepEventTarget(event);
@@ -915,6 +996,82 @@ class JsonRecordActionTool implements RecorderTool {
       key: event.key,
       modifiers: modifiersForEvent(event),
     });
+  }
+
+  onDragStart(event: DragEvent) {
+    this._dragStartElement = this._recorder.deepEventTarget(event);
+  }
+
+  onDrop(event: DragEvent) {
+    if (!this._dragStartElement)
+      return;
+    const targetElement = this._recorder.deepEventTarget(event);
+    const source = this._ariaSnapshot(this._dragStartElement);
+    const target = this._ariaSnapshot(targetElement);
+    if (source.selector && target.selector) {
+      this._recorder.recordAction({
+        name: 'drag',
+        selector: source.selector,
+        ref: source.ref,
+        ariaSnapshot: source.ariaSnapshot,
+        targetSelector: target.selector,
+        signals: [],
+      });
+    }
+    this._dragStartElement = null;
+  }
+
+  onMouseDown(event: MouseEvent) {
+    if (this._shouldIgnoreMouseEvent(event))
+      return;
+    this._mouseDownPosition = { x: event.clientX, y: event.clientY };
+    this._mouseDownElement = this._recorder.deepEventTarget(event);
+    this._isDragging = false;
+  }
+
+  onMouseMove(event: MouseEvent) {
+    if (this._mouseDownPosition && !this._isDragging) {
+      const dx = event.clientX - this._mouseDownPosition.x;
+      const dy = event.clientY - this._mouseDownPosition.y;
+      if (Math.sqrt(dx * dx + dy * dy) > 10)
+        this._isDragging = true;
+    }
+  }
+
+  onMouseUp(event: MouseEvent) {
+    if (this._isDragging && this._mouseDownPosition && this._mouseDownElement) {
+      const endPosition = { x: event.clientX, y: event.clientY };
+      const targetElement = this._recorder.deepEventTarget(event);
+      const source = this._ariaSnapshot(this._mouseDownElement);
+      const target = this._ariaSnapshot(targetElement);
+
+      if (source.selector && target.selector && source.selector !== target.selector) {
+        this._recorder.recordAction({
+          name: 'drag',
+          selector: source.selector,
+          ref: source.ref,
+          ariaSnapshot: source.ariaSnapshot,
+          targetSelector: target.selector,
+          startPosition: this._mouseDownPosition,
+          endPosition,
+          signals: [],
+        });
+      } else if (source.selector) {
+        this._recorder.recordAction({
+          name: 'drag',
+          selector: source.selector,
+          ref: source.ref,
+          ariaSnapshot: source.ariaSnapshot,
+          startPosition: this._mouseDownPosition,
+          endPosition,
+          signals: [],
+        });
+      }
+    }
+
+    this._mouseDownPosition = null;
+    this._mouseDownElement = null;
+    // Don't reset _isDragging here - let onClick reset it to suppress the trailing click event.
   }
 
   private _shouldIgnoreMouseEvent(event: MouseEvent): boolean {
@@ -1327,8 +1484,6 @@ class Overlay {
 
   private _hideOverlay() {
     this._overlayElement.setAttribute('hidden', 'true');
-    // Hide agent mask when overlay is hidden
-    this._recorder.hideAgentMask();
   }
 
   private _showOverlay() {
@@ -1336,8 +1491,6 @@ class Overlay {
       return;
     this._overlayElement.removeAttribute('hidden');
     this._updateVisualPosition();
-    // Show agent mask when overlay is shown
-    this._recorder.showAgentMask();
   }
 
   private _updateVisualPosition() {
@@ -1421,7 +1574,6 @@ export class Recorder {
   private _lastActionAutoexpectSnapshot: AriaSnapshot | undefined;
   readonly highlight: Highlight;
   readonly overlay: Overlay | undefined;
-  private _agentMask: AgentMask | undefined;
   private _stylesheet: CSSStyleSheet;
   state: UIState = {
     mode: 'none',
@@ -1452,7 +1604,6 @@ export class Recorder {
     if (injectedScript.window.top === injectedScript.window) {
       this.overlay = new Overlay(this);
       this.overlay.setUIState(this.state);
-      this._agentMask = new AgentMask(injectedScript);
     }
     this._stylesheet = new injectedScript.window.CSSStyleSheet();
     this._stylesheet.replaceSync(`
@@ -1474,6 +1625,7 @@ export class Recorder {
       addEventListener(this.document, 'dblclick', event => this._onDblClick(event as MouseEvent), true),
       addEventListener(this.document, 'contextmenu', event => this._onContextMenu(event as MouseEvent), true),
       addEventListener(this.document, 'dragstart', event => this._onDragStart(event as DragEvent), true),
+      addEventListener(this.document, 'drop', event => this._onDrop(event as DragEvent), true),
       addEventListener(this.document, 'input', event => this._onInput(event), true),
       addEventListener(this.document, 'keydown', event => this._onKeyDown(event as KeyboardEvent), true),
       addEventListener(this.document, 'keyup', event => this._onKeyUp(event as KeyboardEvent), true),
@@ -1605,6 +1757,14 @@ export class Recorder {
     if (this._ignoreOverlayEvent(event))
       return;
     this._currentTool.onDragStart?.(event);
+  }
+
+  private _onDrop(event: DragEvent) {
+    if (!event.isTrusted)
+      return;
+    if (this._ignoreOverlayEvent(event))
+      return;
+    this._currentTool.onDrop?.(event);
   }
 
   private _onPointerDown(event: PointerEvent) {
@@ -1742,7 +1902,7 @@ export class Recorder {
     return event.composedPath().some(e => {
       const nodeName = (e as Element).nodeName || '';
       const lower = nodeName.toLowerCase();
-      return lower === 'x-pw-glass' || lower === 'x-pw-agent-mask';
+      return lower === 'x-pw-glass';
     });
   }
 
@@ -1789,13 +1949,6 @@ export class Recorder {
     void this._delegate.elementPicked?.({ selector, ariaSnapshot });
   }
 
-  showAgentMask() {
-    this._agentMask?.show();
-  }
-
-  hideAgentMask(callback?: () => void) {
-    this._agentMask?.hide(callback);
-  }
 }
 
 class Dialog {

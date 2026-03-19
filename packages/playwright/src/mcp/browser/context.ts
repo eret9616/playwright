@@ -293,50 +293,6 @@ export class InputRecorder {
 
   private async _initialize() {
     const sessionLog = this._context.sessionLog!;
-    const browserContext = this._browserContext;
-    const maskAlreadyInactive = !sessionLog.isMaskActive();
-
-    // Helper: remove agent mask from a single page
-    const removeMaskFromPage = async (page: playwright.Page) => {
-      try {
-        await page.evaluate(() => {
-          const maskElement = document.querySelector('x-pw-agent-mask');
-          if (maskElement)
-            maskElement.remove();
-          try { sessionStorage.setItem('_pw_agent_mask', 'closed'); } catch {}
-        });
-      } catch {
-        // Page might be closed, ignore
-      }
-    };
-
-    // Helper: auto-remove mask on future page loads
-    const autoRemoveMaskOnLoad = () => {
-      browserContext.on('page', async page => {
-        page.on('load', async () => {
-          await removeMaskFromPage(page);
-        });
-      });
-    };
-
-    if (!maskAlreadyInactive) {
-      // Set up flush callback: after the first tool call flush,
-      // allow writing user actions AND remove the visual mask immediately
-      // (no longer waiting for isStreaming to end)
-      sessionLog.setOnFlushCallback(async () => {
-        if (sessionLog.isMaskActive()) {
-          sessionLog.setMaskActive(false);
-          // Remove visual mask from all existing pages
-          for (const page of browserContext.pages())
-            await removeMaskFromPage(page);
-          // Auto-remove mask on future page loads
-          autoRemoveMaskOnLoad();
-        }
-      });
-    }
-
-    if (maskAlreadyInactive)
-      autoRemoveMaskOnLoad();
 
     await (this._browserContext as any)._enableRecorder({
       mode: 'recording',
@@ -371,21 +327,5 @@ export class InputRecorder {
           sessionLog.logUserAction(navigateAction, tab, `await page.goto('${data.signal.url}');`, false);
       },
     });
-
-    // If mask was already inactive before _enableRecorder, remove it now
-    // (after recorder has been initialized and potentially shown the mask)
-    if (maskAlreadyInactive) {
-      for (const page of browserContext.pages()) {
-        try {
-          await page.evaluate(() => {
-            const maskElement = document.querySelector('x-pw-agent-mask');
-            if (maskElement)
-              maskElement.remove();
-          });
-        } catch {
-          // Page might be closed, ignore
-        }
-      }
-    }
   }
 }
