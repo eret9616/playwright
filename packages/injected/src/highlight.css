@@ -196,6 +196,11 @@ x-pw-tool-item.record.disabled.toggled > x-div {
   opacity: 0.8;
 }
 
+/* 隐藏录制按钮 */
+x-pw-tool-item.record {
+  display: none !important;
+}
+
 x-pw-tool-item.accept > x-div {
   background-color: #388a34;
 }
@@ -233,11 +238,6 @@ x-pw-tool-item.value > x-div {
 x-pw-tool-item.snapshot > x-div {
   /* codicon: eye */
   clip-path: url(#icon-gist);
-}
-
-/* 隐藏断言快照按钮 - 该功能不实用 */
-x-pw-tool-item.snapshot {
-  display: none !important;
 }
 
 x-pw-tool-item.accept > x-div {
