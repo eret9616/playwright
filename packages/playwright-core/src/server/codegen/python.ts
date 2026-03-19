@@ -131,6 +131,13 @@ export class PythonLanguageGenerator implements LanguageGenerator {
       }
       case 'assertSnapshot':
         return `expect(${subject}.${this._asLocator(action.selector)}).to_match_aria_snapshot(${quote(action.ariaSnapshot)})`;
+      case 'drag': {
+        if (action.targetSelector)
+          return `${subject}.${this._asLocator(action.selector)}.drag_to(${subject}.${this._asLocator(action.targetSelector)})`;
+        if (action.startPosition && action.endPosition)
+          return `${subject}.mouse.move(${action.startPosition.x}, ${action.startPosition.y})\n${subject}.mouse.down()\n${subject}.mouse.move(${action.endPosition.x}, ${action.endPosition.y})\n${subject}.mouse.up()`;
+        return `# drag action missing target`;
+      }
     }
   }
 
