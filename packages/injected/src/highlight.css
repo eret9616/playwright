@@ -220,6 +220,11 @@ x-pw-tool-item.record.disabled.toggled > x-div {
   opacity: 0.8;
 }
 
+/* 隐藏录制按钮 */
+x-pw-tool-item.record {
+  display: none !important;
+}
+
 x-pw-tool-item.accept > x-div {
   background-color: #388a34;
 }
