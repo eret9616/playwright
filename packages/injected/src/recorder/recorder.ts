@@ -197,8 +197,6 @@ class RecordActionTool implements RecorderTool {
   private _observer: MutationObserver | null = null;
   private _dialog: Dialog;
   private _dragStartModel: HighlightModelWithSelector | null = null;
-  private _mouseDownPosition: { x: number, y: number } | null = null;
-  private _isDragging: boolean = false;
 
   constructor(recorder: Recorder) {
     this._recorder = recorder;
@@ -245,12 +243,6 @@ class RecordActionTool implements RecorderTool {
         // auxclick event arrives after contextmenu and should be consumed.
         consumeEvent(event);
       }
-      return;
-    }
-
-    // Suppress click after a drag gesture.
-    if (this._isDragging) {
-      this._isDragging = false;
       return;
     }
 
@@ -401,8 +393,6 @@ class RecordActionTool implements RecorderTool {
       return;
     this._consumeWhenAboutToPerform(event);
     this._activeModel = this._hoveredModel;
-    this._mouseDownPosition = { x: event.clientX, y: event.clientY };
-    this._isDragging = false;
   }
 
   onMouseUp(event: MouseEvent) {
@@ -411,48 +401,11 @@ class RecordActionTool implements RecorderTool {
     if (this._shouldIgnoreMouseEvent(event))
       return;
     this._consumeWhenAboutToPerform(event);
-
-    if (this._isDragging && this._mouseDownPosition) {
-      this._cancelPendingClickAction();
-      const startPosition = this._mouseDownPosition;
-      const endPosition = { x: event.clientX, y: event.clientY };
-      const sourceSelector = this._activeModel?.selector;
-      const targetSelector = this._hoveredModel?.selector;
-
-      if (sourceSelector && targetSelector && sourceSelector !== targetSelector) {
-        this._recordAction({
-          name: 'drag',
-          selector: sourceSelector,
-          targetSelector,
-          startPosition,
-          endPosition,
-          signals: [],
-        });
-      } else if (sourceSelector) {
-        this._recordAction({
-          name: 'drag',
-          selector: sourceSelector,
-          startPosition,
-          endPosition,
-          signals: [],
-        });
-      }
-    }
-
-    this._mouseDownPosition = null;
-    // Don't reset _isDragging here - let onClick reset it to suppress the trailing click event.
   }
 
   onMouseMove(event: MouseEvent) {
     if (this._dialog.isShowing())
       return;
-
-    if (this._mouseDownPosition && !this._isDragging) {
-      const dx = event.clientX - this._mouseDownPosition.x;
-      const dy = event.clientY - this._mouseDownPosition.y;
-      if (Math.sqrt(dx * dx + dy * dy) > 10)
-        this._isDragging = true;
-    }
 
     const target = this._recorder.deepEventTarget(event);
     if (this._hoveredElement === target)
@@ -817,9 +770,6 @@ class JsonRecordActionTool implements RecorderTool {
   private _isComposing: boolean = false;
   private _pendingFillAction: { element: HTMLElement, action: actions.Action } | null = null;
   private _dragStartElement: HTMLElement | null = null;
-  private _mouseDownPosition: { x: number, y: number } | null = null;
-  private _mouseDownElement: HTMLElement | null = null;
-  private _isDragging: boolean = false;
 
   constructor(recorder: Recorder) {
     this._recorder = recorder;
@@ -847,12 +797,6 @@ class JsonRecordActionTool implements RecorderTool {
   }
 
   onClick(event: MouseEvent) {
-    // Suppress click after a drag gesture.
-    if (this._isDragging) {
-      this._isDragging = false;
-      return;
-    }
-
     // in webkit, sliding a range element may trigger a click event with a different target if the mouse is released outside the element bounding box.
     // So we check the hovered element instead, and if it is a range input, we skip click handling
     const element = this._recorder.deepEventTarget(event);
@@ -1019,59 +963,6 @@ class JsonRecordActionTool implements RecorderTool {
       });
     }
     this._dragStartElement = null;
-  }
-
-  onMouseDown(event: MouseEvent) {
-    if (this._shouldIgnoreMouseEvent(event))
-      return;
-    this._mouseDownPosition = { x: event.clientX, y: event.clientY };
-    this._mouseDownElement = this._recorder.deepEventTarget(event);
-    this._isDragging = false;
-  }
-
-  onMouseMove(event: MouseEvent) {
-    if (this._mouseDownPosition && !this._isDragging) {
-      const dx = event.clientX - this._mouseDownPosition.x;
-      const dy = event.clientY - this._mouseDownPosition.y;
-      if (Math.sqrt(dx * dx + dy * dy) > 10)
-        this._isDragging = true;
-    }
-  }
-
-  onMouseUp(event: MouseEvent) {
-    if (this._isDragging && this._mouseDownPosition && this._mouseDownElement) {
-      const endPosition = { x: event.clientX, y: event.clientY };
-      const targetElement = this._recorder.deepEventTarget(event);
-      const source = this._ariaSnapshot(this._mouseDownElement);
-      const target = this._ariaSnapshot(targetElement);
-
-      if (source.selector && target.selector && source.selector !== target.selector) {
-        this._recorder.recordAction({
-          name: 'drag',
-          selector: source.selector,
-          ref: source.ref,
-          ariaSnapshot: source.ariaSnapshot,
-          targetSelector: target.selector,
-          startPosition: this._mouseDownPosition,
-          endPosition,
-          signals: [],
-        });
-      } else if (source.selector) {
-        this._recorder.recordAction({
-          name: 'drag',
-          selector: source.selector,
-          ref: source.ref,
-          ariaSnapshot: source.ariaSnapshot,
-          startPosition: this._mouseDownPosition,
-          endPosition,
-          signals: [],
-        });
-      }
-    }
-
-    this._mouseDownPosition = null;
-    this._mouseDownElement = null;
-    // Don't reset _isDragging here - let onClick reset it to suppress the trailing click event.
   }
 
   private _shouldIgnoreMouseEvent(event: MouseEvent): boolean {
