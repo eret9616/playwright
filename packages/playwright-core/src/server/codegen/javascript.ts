@@ -125,6 +125,13 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
         const commentIfNeeded = this._isTest ? '' : '// ';
         return `${commentIfNeeded}await expect(${subject}.${this._asLocator(action.selector)}).toMatchAriaSnapshot(${quoteMultiline(action.ariaSnapshot, `${commentIfNeeded}  `)});`;
       }
+      case 'drag': {
+        if (action.targetSelector)
+          return `await ${subject}.${this._asLocator(action.selector)}.dragTo(${subject}.${this._asLocator(action.targetSelector)});`;
+        if (action.startPosition && action.endPosition)
+          return `await ${subject}.mouse.move(${action.startPosition.x}, ${action.startPosition.y});\nawait ${subject}.mouse.down();\nawait ${subject}.mouse.move(${action.endPosition.x}, ${action.endPosition.y});\nawait ${subject}.mouse.up();`;
+        return `// drag action missing target`;
+      }
     }
   }
 

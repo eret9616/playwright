@@ -166,6 +166,13 @@ export class CSharpLanguageGenerator implements LanguageGenerator {
       }
       case 'assertSnapshot':
         return `await Expect(${subject}.${this._asLocator(action.selector)}).ToMatchAriaSnapshotAsync(${quote(action.ariaSnapshot)});`;
+      case 'drag': {
+        if (action.targetSelector)
+          return `await ${subject}.${this._asLocator(action.selector)}.DragToAsync(${subject}.${this._asLocator(action.targetSelector)});`;
+        if (action.startPosition && action.endPosition)
+          return `await ${subject}.Mouse.MoveAsync(${action.startPosition.x}, ${action.startPosition.y});\nawait ${subject}.Mouse.DownAsync();\nawait ${subject}.Mouse.MoveAsync(${action.endPosition.x}, ${action.endPosition.y});\nawait ${subject}.Mouse.UpAsync();`;
+        return `// drag action missing target`;
+      }
     }
   }
 
