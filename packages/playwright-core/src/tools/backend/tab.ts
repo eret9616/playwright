@@ -519,20 +519,22 @@ function openNativeFileDialog(multiple: boolean): Promise<string[]> {
         : `osascript -e 'return POSIX path of (choose file)'`;
     } else if (platform === 'win32') {
       command = multiple
-        ? `powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.OpenFileDialog; $f.Multiselect = $true; if ($f.ShowDialog() -eq 'OK') { $f.FileNames -join [char]10 } else { '' }"`
-        : `powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.OpenFileDialog; if ($f.ShowDialog() -eq 'OK') { $f.FileName } else { '' }"`;
+        ? `powershell -NoProfile -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.OpenFileDialog; $f.Multiselect = $true; if ($f.ShowDialog() -eq 'OK') { $f.FileNames -join [char]10 } else { '' }"`
+        : `powershell -NoProfile -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.OpenFileDialog; if ($f.ShowDialog() -eq 'OK') { $f.FileName } else { '' }"`;
     } else {
       resolve([]);
       return;
     }
 
-    exec(command, (error, stdout) => {
+    exec(command, { encoding: 'utf8' }, (error, stdout, stderr) => {
       if (error) {
         // User cancelled or error occurred
+        // eslint-disable-next-line no-console
+        console.error(`[UserFileUpload] Failed to open native file dialog on ${platform}: ${error.message}${stderr ? `\nstderr: ${stderr}` : ''}`);
         resolve([]);
         return;
       }
-      const files = stdout.trim().split('\n').filter(f => f.length > 0);
+      const files = stdout.trim().split('\n').map(f => f.replace(/\r$/, '')).filter(f => f.length > 0);
       resolve(files);
     });
   });
