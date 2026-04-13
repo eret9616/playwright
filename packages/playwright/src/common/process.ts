@@ -79,7 +79,7 @@ process.on('message', async (message: any) => {
     const keys = new Set([...Object.keys(process.env), ...Object.keys(startingEnv)]);
     const producedEnv: EnvProducedPayload = [...keys].filter(key => startingEnv[key] !== process.env[key]).map(key => [key, process.env[key] ?? null]);
     sendMessageToParent({ method: '__env_produced__', params: producedEnv });
-    await gracefullyCloseAndExit(false);
+    await gracefullyCloseAndExit(true);
     return;
   }
   if (message.method === '__dispatch__') {
