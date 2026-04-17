@@ -475,7 +475,8 @@ export class Tab extends EventEmitter<TabEventsInterface> {
       const files = await openNativeFileDialog(isMultiple);
       if (files.length > 0)
         await chooser.setFiles(files);
-      // TODO: session log of user file upload (logUserAction was removed during 1.60 alpha refactor)
+      // setFiles is observed by InputRecorder (actionAdded → setInputFiles) and
+      // written to session.md as a User action; no direct logUserAction needed.
     } catch (e) {
       debug('pw:tools:error')(e);
     }
