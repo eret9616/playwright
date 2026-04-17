@@ -847,7 +847,7 @@ class JsonRecordActionTool implements RecorderTool {
         return;
       }
 
-      const fillAction = {
+      const fillAction: actions.Action = {
         name: 'fill',
         ref,
         selector,
@@ -965,7 +965,8 @@ class JsonRecordActionTool implements RecorderTool {
   private _ariaSnapshot(element: HTMLElement | undefined, options?: { noText?: boolean }): { ariaSnapshot: string, selector?: string, ref?: string } {
     const { ariaSnapshot, refs } = this._recorder.injectedScript.ariaSnapshotForRecorder();
     const ref = element ? refs.get(element) : undefined;
-    const elementInfo = element ? this._recorder.injectedScript.generateSelector(element, { testIdAttributeName: this._recorder.state.testIdAttributeName, noText: options?.noText }) : undefined;
+    // noText is an internal option of selectorGenerator (not in public GenerateSelectorOptions); cast to bypass type check.
+    const elementInfo = element ? this._recorder.injectedScript.generateSelector(element, { testIdAttributeName: this._recorder.state.testIdAttributeName, noText: options?.noText } as any) : undefined;
     return { ariaSnapshot, selector: elementInfo?.selector, ref };
   }
 }
