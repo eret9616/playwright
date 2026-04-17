@@ -31,6 +31,7 @@ import type * as playwrightTypes from '../../..';
 import type { SessionLog } from './sessionLog';
 import type { Disposable } from '@isomorphic/disposable';
 import type { ToolCapability } from './tool';
+import type * as actions from '@recorder/actions';
 
 const testDebug = debug('pw:mcp:test');
 
@@ -326,6 +327,13 @@ export class Context {
     const browserContext = this._rawBrowserContext;
     await this._setupRequestInterception(browserContext);
 
+    // Pipe user-driven recorder events into the session log so chat-server can
+    // see manual interactions in session.md (`### User action: ...`). The 1.58
+    // mcp had this wired up via InputRecorder; the move-to-core refactor in
+    // upstream commit a52aa9a10 dropped it.
+    if (this.sessionLog)
+      await InputRecorder.create(this, browserContext);
+
     if (this.config.saveTrace) {
       await browserContext.tracing.start({
         name: 'trace-' + Date.now(),
@@ -419,4 +427,75 @@ async function checkFile(options: ContextOptions, resolvedFilename: string, flag
   const workspace = options.cwd;
   if (!isPathInside(output, resolvedFilename) && !isPathInside(workspace, resolvedFilename))
     throw new Error(`File access denied: ${resolvedFilename} is outside allowed roots. Allowed roots: ${output}, ${workspace}`);
+}
+
+// Bridges browserContext._enableRecorder events into SessionLog.logUserAction so
+// that user-driven interactions (clicks, fills, navigations) end up in
+// session.md alongside MCP tool calls. chat-server consumes those entries to
+// surface manual UI activity to the LLM. Restored after upstream commit
+// a52aa9a10 dropped the original InputRecorder when moving mcp into core.
+class InputRecorder {
+  private readonly _context: Context;
+  private readonly _browserContext: playwrightTypes.BrowserContext;
+
+  private constructor(context: Context, browserContext: playwrightTypes.BrowserContext) {
+    this._context = context;
+    this._browserContext = browserContext;
+  }
+
+  static async create(context: Context, browserContext: playwrightTypes.BrowserContext): Promise<InputRecorder> {
+    const recorder = new InputRecorder(context, browserContext);
+    await recorder._initialize();
+    return recorder;
+  }
+
+  private async _initialize() {
+    const sessionLog = this._context.sessionLog!;
+    // _enableRecorder is internal but stable across 1.58 → 1.60. The 'api'
+    // recorderMode keeps the recorder headless (no in-page overlay) and just
+    // emits action events.
+    await (this._browserContext as unknown as {
+      _enableRecorder(
+        params: { mode: 'recording'; recorderMode: 'api' },
+        sink: {
+          actionAdded: (page: playwrightTypes.Page, data: actions.ActionInContext, code: string) => void;
+          actionUpdated: (page: playwrightTypes.Page, data: actions.ActionInContext, code: string) => void;
+          signalAdded: (page: playwrightTypes.Page, data: actions.SignalInContext) => void;
+        },
+      ): Promise<void>;
+    })._enableRecorder({
+      mode: 'recording',
+      recorderMode: 'api',
+    }, {
+      actionAdded: (page, data, code) => {
+        if (this._context.isRunningTool())
+          return;
+        const tab = Tab.forPage(page);
+        if (tab)
+          sessionLog.logUserAction(data.action, tab, code, false);
+      },
+      actionUpdated: (page, data, code) => {
+        if (this._context.isRunningTool())
+          return;
+        const tab = Tab.forPage(page);
+        if (tab)
+          sessionLog.logUserAction(data.action, tab, code, true);
+      },
+      signalAdded: (page, data) => {
+        if (this._context.isRunningTool())
+          return;
+        if (data.signal.name !== 'navigation')
+          return;
+        const tab = Tab.forPage(page);
+        if (!tab)
+          return;
+        const navigateAction: actions.Action = {
+          name: 'navigate',
+          url: data.signal.url,
+          signals: [],
+        };
+        sessionLog.logUserAction(navigateAction, tab, `await page.goto('${data.signal.url}');`, false);
+      },
+    });
+  }
 }
