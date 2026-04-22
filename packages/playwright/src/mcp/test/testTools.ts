@@ -42,7 +42,7 @@ export const runTests = defineTestTool({
     description: 'Run tests',
     inputSchema: z.object({
       locations: z.array(z.string()).optional().describe('Folder, file or location to run: "test/e2e" or "test/e2e/file.spec.ts" or "test/e2e/file.spec.ts:20"'),
-      projects: z.array(z.string()).optional().describe('Projects to run, projects from playwright.config.ts, by default runs all projects. Running with "chromium" is a good start'),
+      projects: z.array(z.string()).optional().describe('Projects to run, projects from playwright.config.ts, by default runs all projects. Running with "chrome" is a good start'),
     }),
     type: 'readOnly',
   },
