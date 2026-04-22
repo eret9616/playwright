@@ -30,7 +30,7 @@ export const setupPage = defineTestTool({
     description: 'Setup the page for test.',
     inputSchema: z.object({
       plan: z.string().describe('The plan for the test. This should be the actual test plan with all the steps.'),
-      project: z.string().optional().describe('Project to use for setup. For example: "chromium", if no project is provided uses the first project in the config.'),
+      project: z.string().optional().describe('Project to use for setup. For example: "chrome", if no project is provided uses the first project in the config.'),
       seedFile: z.string().optional().describe('A seed file contains a single test that is used to setup the page for testing, for example: "tests/seed.spec.ts". If no seed file is provided, a default seed file is created.'),
     }),
     type: 'readOnly',
