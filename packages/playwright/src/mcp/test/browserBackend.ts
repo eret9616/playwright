@@ -36,16 +36,17 @@ export type BrowserMCPResponse = {
 
 export function createCustomMessageHandler(testInfo: TestInfoImpl, context: playwright.BrowserContext) {
   let backend: tools.BrowserBackend | undefined;
-  // etest patch (fix.54): 上游 hardcode 了 capabilities 但没设 timeouts,
+  // etest patch (fix.54 + fix.56): 上游 hardcode 了 capabilities 但没设 timeouts,
   // 导致 actionTimeoutOptions = { timeout: undefined } → playwright 用 default 0 = 无限等待。
   // 主 agent 探索阶段 click 卡死 30s+ 的根因 — 工具压根不返回,LLM 永远等不到 error。
-  // 加上 microsoft/playwright-mcp 的官方默认 timeouts(5s/60s/5s)。
+  // 数值:action/expect 用 10s(给 Mi 内部 SPA 懒加载/React 重渲染留余量,
+  // 比 microsoft 官方 5s 宽一倍),navigation 沿用 60s(Mi 内网代理 + SSO 跳转常态)。
   const config: tools.ContextConfig = {
     capabilities: ['testing'],
     timeouts: {
-      action: 5000,
+      action: 10000,
       navigation: 60000,
-      expect: 5000,
+      expect: 10000,
     },
   };
   let tools: typeof import('playwright-core/lib/tools/exports') | undefined;
