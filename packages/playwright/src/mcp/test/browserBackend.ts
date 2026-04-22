@@ -36,7 +36,18 @@ export type BrowserMCPResponse = {
 
 export function createCustomMessageHandler(testInfo: TestInfoImpl, context: playwright.BrowserContext) {
   let backend: tools.BrowserBackend | undefined;
-  const config: tools.ContextConfig = { capabilities: ['testing'] };
+  // etest patch (fix.54): 上游 hardcode 了 capabilities 但没设 timeouts,
+  // 导致 actionTimeoutOptions = { timeout: undefined } → playwright 用 default 0 = 无限等待。
+  // 主 agent 探索阶段 click 卡死 30s+ 的根因 — 工具压根不返回,LLM 永远等不到 error。
+  // 加上 microsoft/playwright-mcp 的官方默认 timeouts(5s/60s/5s)。
+  const config: tools.ContextConfig = {
+    capabilities: ['testing'],
+    timeouts: {
+      action: 5000,
+      navigation: 60000,
+      expect: 5000,
+    },
+  };
   let tools: typeof import('playwright-core/lib/tools/exports') | undefined;
 
   return async (data: BrowserMCPRequest): Promise<BrowserMCPResponse> => {
