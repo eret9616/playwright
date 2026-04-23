@@ -208,7 +208,9 @@ export class Response {
     const tabSnapshot = this._context.currentTab() ? await this._context.currentTabOrDie().captureSnapshot(this._includeSnapshotSelector, this._includeSnapshotDepth, this._clientWorkspace) : undefined;
     const tabHeaders = await Promise.all(this._context.tabs().map(tab => tab.headerSnapshot()));
     if (this._includeSnapshot !== 'none' || tabHeaders.some(header => header.changed)) {
-      if (tabHeaders.length !== 1)
+      // 用 LLM 视角下的过滤后长度做判断，避免 chrome 内部 page 让 length > 1 但只有一个真 tab
+      const visibleCount = filterUserVisibleTabs(tabHeaders).length;
+      if (visibleCount !== 1)
         addSection('Open tabs', renderTabsMarkdown(tabHeaders));
       addSection('Page', renderTabMarkdown(tabHeaders.find(h => h.current) ?? tabHeaders[0]));
     }
@@ -266,15 +268,38 @@ export function renderTabMarkdown(tab: TabHeader): string[] {
   return lines;
 }
 
+// Chrome 内部 page（地址栏建议浮窗 / 新标签页 / 扩展页等）不是用户视角的 tab,
+// 在 LLM 视角下应该过滤掉。注意保留 about:blank（用户主动 newTab 的初始状态）和
+// 真实可见 tab。
+function isInternalChromePage(url: string): boolean {
+  if (!url) return false;
+  if (url.startsWith('chrome://')) return true;
+  if (url.startsWith('chrome-extension://')) return true;
+  if (url.startsWith('chrome-untrusted://')) return true;
+  if (url.startsWith('devtools://')) return true;
+  return false;
+}
+
+// 过滤 tab 列表，只保留 LLM 视角下的真实 tab。返回每条记录附带原始 _tabs index,
+// 这样调用 browser_tabs select/close 时 LLM 用的 index 仍指向 _tabs[index]。
+export function filterUserVisibleTabs(tabs: TabHeader[]): Array<{ tab: TabHeader; index: number }> {
+  const result: Array<{ tab: TabHeader; index: number }> = [];
+  for (let i = 0; i < tabs.length; i++) {
+    if (isInternalChromePage(tabs[i].url)) continue;
+    result.push({ tab: tabs[i], index: i });
+  }
+  return result;
+}
+
 export function renderTabsMarkdown(tabs: TabHeader[]): string[] {
-  if (!tabs.length)
+  const visible = filterUserVisibleTabs(tabs);
+  if (!visible.length)
     return ['No open tabs. Navigate to a URL to create one.'];
 
   const lines: string[] = [];
-  for (let i = 0; i < tabs.length; i++) {
-    const tab = tabs[i];
+  for (const { tab, index } of visible) {
     const current = tab.current ? ' (current)' : '';
-    lines.push(`- ${i}:${current} [${tab.title}](${tab.url})`);
+    lines.push(`- ${index}:${current} [${tab.title}](${tab.url})`);
   }
   return lines;
 }
