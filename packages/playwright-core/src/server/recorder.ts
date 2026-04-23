@@ -234,7 +234,24 @@ export class Recorder extends EventEmitter<RecorderEventMap> implements Instrume
       await this._context.exposeBinding(progress, '__pw_recorderRecordAction',
           (source: BindingSource, action: actions.Action) => this._recordAction(progress, source.frame, action));
 
-      await progress.race(this._context.extendInjectedScript(rawRecorderSource.source, { recorderMode: this._recorderMode, hideToolbar: !!this._params.hideToolbar }));
+      // === Mi Web Test Helper: 防止 CDP 模式下 recorder 被重复注入 ===
+      // 根因:CDP 模式连同一个 Chrome 时,每次 MCP 重启 → 新 BrowserContext →
+      // extendInjectedScript 直接 evaluate 一次 source → page 里多一个 PollingRecorder + Recorder。
+      // 旧 Recorder 实例没被清理,事件监听器累积,每次用户操作被多个 Recorder 监听 →
+      // 调 __pw_recorderRecordAction(同名 binding 由新 BrowserContext 覆盖) →
+      // session.md 重复记录 N 次。
+      //
+      // 兜底:在 source 外层加守卫,page 里已经注入过(window.__pwPollingRecorderInjected = true)
+      // 则跳过本次注入,提供一个 NoopRecorder 占位让 InjectedScript.extend 不报错。
+      const wrappedSource =
+        "if (typeof window !== 'undefined' && window.__pwPollingRecorderInjected) {\n" +
+        "  console.log('[PW-Recorder] source 已注入过,跳过本次重复');\n" +
+        "  module.exports = { default: function() { return function NoopRecorder() {}; } };\n" +
+        "} else {\n" +
+        "  if (typeof window !== 'undefined') window.__pwPollingRecorderInjected = true;\n" +
+        rawRecorderSource.source + "\n" +
+        "}\n";
+      await progress.race(this._context.extendInjectedScript(wrappedSource, { recorderMode: this._recorderMode, hideToolbar: !!this._params.hideToolbar }));
     });
 
     if (this._debugger.isPaused())
