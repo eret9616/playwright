@@ -437,16 +437,32 @@ async function checkFile(options: ContextOptions, resolvedFilename: string, flag
 class InputRecorder {
   private readonly _context: Context;
   private readonly _browserContext: playwrightTypes.BrowserContext;
+  private readonly _pausedFlagFile: string;
 
   private constructor(context: Context, browserContext: playwrightTypes.BrowserContext) {
     this._context = context;
     this._browserContext = browserContext;
+    // chat-server toggles this file (create=pause, delete=resume) so that user
+    // browser actions stop being persisted to session.md while recording is off.
+    // Tool calls are NOT affected — only the User action log entries below.
+    this._pausedFlagFile = path.join(context.sessionLog!.folder, '.recording-paused');
   }
 
   static async create(context: Context, browserContext: playwrightTypes.BrowserContext): Promise<InputRecorder> {
     const recorder = new InputRecorder(context, browserContext);
     await recorder._initialize();
     return recorder;
+  }
+
+  // Returns true when the chat-server has flipped the "recording" checkbox off.
+  // Cheap (a single fs.existsSync, microsecond-level) and called once per user
+  // action, which is far below user input rates.
+  private _isPaused(): boolean {
+    try {
+      return fs.existsSync(this._pausedFlagFile);
+    } catch {
+      return false;
+    }
   }
 
   private async _initialize() {
@@ -470,6 +486,8 @@ class InputRecorder {
       actionAdded: (page, data, code) => {
         if (this._context.isRunningTool())
           return;
+        if (this._isPaused())
+          return;
         const tab = Tab.forPage(page);
         if (tab)
           sessionLog.logUserAction(data.action, tab, code, false);
@@ -477,12 +495,16 @@ class InputRecorder {
       actionUpdated: (page, data, code) => {
         if (this._context.isRunningTool())
           return;
+        if (this._isPaused())
+          return;
         const tab = Tab.forPage(page);
         if (tab)
           sessionLog.logUserAction(data.action, tab, code, true);
       },
       signalAdded: (page, data) => {
         if (this._context.isRunningTool())
+          return;
+        if (this._isPaused())
           return;
         if (data.signal.name !== 'navigation')
           return;
