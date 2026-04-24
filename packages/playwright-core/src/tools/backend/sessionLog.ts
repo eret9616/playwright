@@ -37,6 +37,12 @@ export class SessionLog {
     this._cwd = cwd;
   }
 
+  // Exposed so InputRecorder can locate the per-session `.recording-paused`
+  // flag file (chat-server toggles it when the user flips the recording mode).
+  get folder(): string {
+    return this._folder;
+  }
+
   static async create(config: ContextConfig, cwd: string): Promise<SessionLog> {
     const sessionFolder = await outputFile({ config, cwd }, `session-${Date.now()}`, { origin: 'code' });
     await fs.promises.mkdir(sessionFolder, { recursive: true });
